@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		654E82392B9CF71500F5F54F /* Entity.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 654E82372B9CF71500F5F54F /* Entity.cpp */; };
 		659592E02B814207000CCAEB /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 659592DF2B814207000CCAEB /* main.cpp */; };
 		659592EE2B814456000CCAEB /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 659592ED2B814456000CCAEB /* OpenGL.framework */; };
 		659592F02B814463000CCAEB /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 659592EF2B814463000CCAEB /* Cocoa.framework */; };
@@ -33,6 +34,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		654E82372B9CF71500F5F54F /* Entity.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Entity.cpp; sourceTree = "<group>"; };
+		654E82382B9CF71500F5F54F /* Entity.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Entity.h; sourceTree = "<group>"; };
 		659592DC2B814207000CCAEB /* Simple2DScene */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Simple2DScene; sourceTree = BUILT_PRODUCTS_DIR; };
 		659592DF2B814207000CCAEB /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		659592E62B814320000CCAEB /* shaders */ = {isa = PBXFileReference; lastKnownFileType = folder; path = shaders; sourceTree = "<group>"; };
@@ -91,6 +94,8 @@
 				659592E62B814320000CCAEB /* shaders */,
 				659592FB2B814603000CCAEB /* stb_image.h */,
 				659592DF2B814207000CCAEB /* main.cpp */,
+				654E82372B9CF71500F5F54F /* Entity.cpp */,
+				654E82382B9CF71500F5F54F /* Entity.h */,
 			);
 			path = Simple2DScene;
 			sourceTree = "<group>";
@@ -165,6 +170,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				659592E02B814207000CCAEB /* main.cpp in Sources */,
+				654E82392B9CF71500F5F54F /* Entity.cpp in Sources */,
 				659592F92B8145E0000CCAEB /* ShaderProgram.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
