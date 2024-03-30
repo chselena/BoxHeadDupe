@@ -1,7 +1,7 @@
 /**
 * Author: Selena Cheung
-* Assignment: Lunar Lander
-* Date due: 2024-09-03, 11:59pm
+* Assignment: Rise of the AI
+* Date due: 2024-03-30, 11:59pm
 * I pledge that I have completed this assignment without
 * collaborating with anyone else, in conformance with the
 * NYU School of Engineering Policies and Procedures on
@@ -12,12 +12,15 @@
 #define LOG(argument) std::cout << argument << '\n'
 #define GL_GLEXT_PROTOTYPES 1
 #define FIXED_TIMESTEP 0.0166666f
-#define PLATFORM_COUNT 13
+#define ENEMY_COUNT 3
+#define LEVEL1_WIDTH 14
+#define LEVEL1_HEIGHT 5
 
 #ifdef _WINDOWS
 #include <GL/glew.h>
 #endif
 
+#include <SDL2_Mixer/SDL_mixer.h>
 #include <SDL.h>
 #include <SDL_opengl.h>
 #include "glm/mat4x4.hpp"
@@ -28,168 +31,161 @@
 #include <ctime>
 #include <vector>
 #include "Entity.h"
+#include "Map.h"
 
-// ––––– STRUCTS AND ENUMS ––––– //
+// ————— GAME STATE ————— //
 struct GameState
 {
-    Entity* player;
-    Entity* platforms;
+    Entity *player;
+    Entity *enemies;
+    Entity *weapon;
+    
+    Map *map;
+    
+    Mix_Music *bgm;
+    Mix_Chunk *jump_sfx;
 };
 
-// ––––– CONSTANTS ––––– //
+// ————— CONSTANTS ————— //
 const int WINDOW_WIDTH  = 640,
           WINDOW_HEIGHT = 480;
 
-const float BG_RED     = 1.0f,
-            BG_BLUE    = 0.7451f,
-            BG_GREEN   = 0.8f,
+const float BG_RED     = 0.1922f,
+            BG_BLUE    = 0.549f,
+            BG_GREEN   = 0.9059f,
             BG_OPACITY = 1.0f;
-
 
 const int VIEWPORT_X = 0,
           VIEWPORT_Y = 0,
           VIEWPORT_WIDTH  = WINDOW_WIDTH,
           VIEWPORT_HEIGHT = WINDOW_HEIGHT;
 
-const int FONTBANK_SIZE = 16;
-const float MINIMUM_COLLISION_DISTANCE = 1.2f;
+const char GAME_WINDOW_NAME[] = "Dog in Heaven";
 
-const char V_SHADER_PATH[] = "/Users/selenacheung/Desktop/game-prog/Simple2DScene/Simple2DScene/shaders/vertex_textured.glsl",
-           F_SHADER_PATH[] = "/Users/selenacheung/Desktop/game-prog/Simple2DScene/Simple2DScene/shaders/fragment_textured.glsl";
+const char V_SHADER_PATH[] = "/Users/selenacheung/Desktop/game-prog/Rise_OfAI/Simple2DScene/shaders/vertex_textured.glsl",
+           F_SHADER_PATH[] = "/Users/selenacheung/Desktop/game-prog/Rise_OfAI/Simple2DScene/shaders/fragment_textured.glsl";
 
-const float MILLISECONDS_IN_SECOND  = 1000.0;
-const char  SPRITESHEET_FILEPATH[]  = "/Users/selenacheung/Desktop/game-prog/Simple2DScene/Simple2DScene/assets/dog.png",
-            PLATFORM_FILEPATH[]     = "/Users/selenacheung/Desktop/game-prog/Simple2DScene/Simple2DScene/assets/water.png",
-            CLOUD_FILEPATH[]     = "/Users/selenacheung/Desktop/game-prog/Simple2DScene/Simple2DScene/assets/cloud.png",
-            FONT_FILE_PATH[] = "/Users/selenacheung/Desktop/game-prog/Simple2DScene/Simple2DScene/assets/font1.png";
-;
+const float MILLISECONDS_IN_SECOND = 1000.0;
+
+const char SPRITESHEET_FILEPATH[] = "/Users/selenacheung/Desktop/game-prog/Rise_OfAI/Simple2DScene/assets/dog.png",
+            ENEMY_FILEPATH[] = "/Users/selenacheung/Desktop/game-prog/Rise_OfAI/Simple2DScene/assets/choco_bar.png",
+           MAP_TILESET_FILEPATH[] = "/Users/selenacheung/Desktop/game-prog/Rise_OfAI/Simple2DScene/assets/nuvem.png",
+           BGM_FILEPATH[]         = "/Users/selenacheung/Desktop/game-prog/Rise_OfAI/Simple2DScene/assets/Paradise_Found.mp3",
+           JUMP_SFX_FILEPATH[]    = "/Users/selenacheung/Desktop/game-prog/Rise_OfAI/Simple2DScene/assets/poof.mp3",
+FONT_FILE_PATH[] = "/Users/selenacheung/Desktop/game-prog/Rise_OfAI/Simple2DScene/assets/font1.png",
+BONE_FILE_PATH[] = "/Users/selenacheung/Desktop/game-prog/Rise_OfAI/Simple2DScene/assets/bone.png";
 
 const int NUMBER_OF_TEXTURES = 1;
 const GLint LEVEL_OF_DETAIL  = 0;
 const GLint TEXTURE_BORDER   = 0;
+const int FONTBANK_SIZE = 16;
 GLuint font_texture_id;
+bool won = false;
+bool lost = false;
+bool summon_bone = false;
 
-// ––––– GLOBAL VARIABLES ––––– //
+unsigned int LEVEL_1_DATA[] =
+{
+    0, 0, 0, 0, 3, 1, 1, 2, 0, 0, 0, 0, 3, 2,
+    0, 0, 0, 3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 1, 1, 2,
+    3, 2, 0, 0, 0, 3, 1, 2, 0, 0, 0, 0, 0, 0,
+    0, 3, 1, 1, 1, 2, 0, 0, 3, 2, 0, 0, 0, 0
+};
+
+// ————— VARIABLES ————— //
 GameState g_state;
-
-SDL_Window* g_display_window;
-bool g_game_is_running = true;
-
-ShaderProgram g_program;
-glm::mat4 g_view_matrix, g_projection_matrix;
-
-float g_previous_ticks = 0.0f;
-float g_accumulator = 0.0f;
-bool won_message_displayed = false;
-bool lost_message_displayed = false;
 float message_display_time = 0.0f;
+SDL_Window* m_display_window;
+bool m_game_is_running = true;
 
-// ––––– GENERAL FUNCTIONS ––––– //
+ShaderProgram m_program;
+glm::mat4 m_view_matrix, m_projection_matrix;
+
+float m_previous_ticks = 0.0f;
+float m_accumulator    = 0.0f;
+
+// ————— GENERAL FUNCTIONS ————— //
 GLuint load_texture(const char* filepath)
 {
     int width, height, number_of_components;
     unsigned char* image = stbi_load(filepath, &width, &height, &number_of_components, STBI_rgb_alpha);
-
+    
     if (image == NULL)
     {
         LOG("Unable to load image. Make sure the path is correct.");
         assert(false);
     }
-
-    GLuint textureID;
-    glGenTextures(NUMBER_OF_TEXTURES, &textureID);
-    glBindTexture(GL_TEXTURE_2D, textureID);
+    
+    GLuint texture_id;
+    glGenTextures(NUMBER_OF_TEXTURES, &texture_id);
+    glBindTexture(GL_TEXTURE_2D, texture_id);
     glTexImage2D(GL_TEXTURE_2D, LEVEL_OF_DETAIL, GL_RGBA, width, height, TEXTURE_BORDER, GL_RGBA, GL_UNSIGNED_BYTE, image);
-
+    
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
+    
     stbi_image_free(image);
-
-    return textureID;
+    
+    return texture_id;
 }
 
 void initialise()
 {
-    SDL_Init(SDL_INIT_VIDEO);
-    g_display_window = SDL_CreateWindow("Lunar Lander Dupe",
+    // ————— GENERAL ————— //
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
+    m_display_window = SDL_CreateWindow(GAME_WINDOW_NAME,
                                       SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                       WINDOW_WIDTH, WINDOW_HEIGHT,
                                       SDL_WINDOW_OPENGL);
-
-    SDL_GLContext context = SDL_GL_CreateContext(g_display_window);
-    SDL_GL_MakeCurrent(g_display_window, context);
-
+    
+    SDL_GLContext context = SDL_GL_CreateContext(m_display_window);
+    SDL_GL_MakeCurrent(m_display_window, context);
+    
 #ifdef _WINDOWS
     glewInit();
 #endif
-
-    glViewport(VIEWPORT_X, VIEWPORT_Y, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
-
-    g_program.load(V_SHADER_PATH, F_SHADER_PATH);
-    font_texture_id = load_texture(FONT_FILE_PATH);
-
-
-    g_view_matrix = glm::mat4(1.0f);
-    g_projection_matrix = glm::ortho(-5.0f, 5.0f, -3.75f, 3.75f, -1.0f, 1.0f);
-
-    g_program.set_projection_matrix(g_projection_matrix);
-    g_program.set_view_matrix(g_view_matrix);
-
-    //glUseProgram(g_program.programID);
-    glUseProgram(g_program.get_program_id());
-
-    glClearColor(BG_RED, BG_BLUE, BG_GREEN, BG_OPACITY);
-
-    // ––––– PLATFORMS ––––– //
-    GLuint platform_texture_id = load_texture(PLATFORM_FILEPATH);
-    GLuint win_platform_texture_id = load_texture(CLOUD_FILEPATH);
-
-    g_state.platforms = new Entity[PLATFORM_COUNT];
-    g_state.platforms = new Entity[PLATFORM_COUNT];
     
-
-    g_state.platforms[PLATFORM_COUNT - 1].m_texture_id = win_platform_texture_id;
-    g_state.platforms[PLATFORM_COUNT - 1].set_position(glm::vec3(-1.5f, 0.1f, 0.0f));
-    g_state.platforms[PLATFORM_COUNT - 1].set_width(0.4f);
-    g_state.platforms[PLATFORM_COUNT - 1].update(0.0f, NULL, 0);
-
-    for (int i = 0; i < PLATFORM_COUNT - 2; i++)
-    {
-        g_state.platforms[i].m_texture_id = platform_texture_id;
-        g_state.platforms[i].set_position(glm::vec3(i - 5.0f, -3.5f, 0.0f));
-        g_state.platforms[i].set_width(0.4f);
-        g_state.platforms[i].update(0.0f, NULL, 0);
-    }
-
-    g_state.platforms[PLATFORM_COUNT - 2].m_texture_id = win_platform_texture_id;
-    g_state.platforms[PLATFORM_COUNT - 2].set_position(glm::vec3(2.5f, -1.5f, 0.0f));
-    g_state.platforms[PLATFORM_COUNT - 2].set_width(0.4f);
-    g_state.platforms[PLATFORM_COUNT - 2].update(0.0f, NULL, 0);
-
-    // ––––– PLAYER (DOG) ––––– //
+    // ————— VIDEO SETUP ————— //
+    glViewport(VIEWPORT_X, VIEWPORT_Y, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+    
+    m_program.load(V_SHADER_PATH, F_SHADER_PATH);
+    
+    m_view_matrix = glm::mat4(1.0f);
+    m_projection_matrix = glm::ortho(-5.0f, 5.0f, -3.75f, 3.75f, -1.0f, 1.0f);
+    
+    m_program.set_projection_matrix(m_projection_matrix);
+    m_program.set_view_matrix(m_view_matrix);
+    
+    glUseProgram(m_program.get_program_id());
+    
+    glClearColor(BG_RED, BG_BLUE, BG_GREEN, BG_OPACITY);
+    
+    font_texture_id = load_texture(FONT_FILE_PATH);
+    
+    // ————— MAP SET-UP ————— //
+    GLuint map_texture_id = load_texture(MAP_TILESET_FILEPATH);
+    g_state.map = new Map(LEVEL1_WIDTH, LEVEL1_HEIGHT, LEVEL_1_DATA, map_texture_id, 1.0f, 3, 1);
+    
+    // ————— DOG SET-UP ————— //
     // Existing
     g_state.player = new Entity();
-    g_state.player->set_position(glm::vec3(0.0f, 3.0f, 0.0f));
+    g_state.player->set_entity_type(PLAYER);
+    g_state.player->set_position(glm::vec3(0.0f, 0.0f, 0.0f));
     g_state.player->set_movement(glm::vec3(0.0f));
-    g_state.player->m_speed = 1.0f;
-    g_state.player->set_acceleration(glm::vec3(0.0f, -0.5f, 0.0f));
+    g_state.player->set_speed(2.5f);
+    g_state.player->set_acceleration(glm::vec3(0.0f, -9.81f, 0.0f));
     g_state.player->m_texture_id = load_texture(SPRITESHEET_FILEPATH);
     
-    //fuel
-    g_state.player->m_fuel = 800;
-
     // Walking
-    g_state.player->m_walking[g_state.player->LEFT]  = new int[4] { 5, 6, 7, 8 };
-    g_state.player->m_walking[g_state.player->RIGHT] = new int[4] { 9, 10, 11, 12 };
-    g_state.player->m_walking[g_state.player->UP]    = new int[4] { 1, 2, 3, 4 };
-    g_state.player->m_walking[g_state.player->DOWN]  = new int[4] { 13, 14, 15, 16 };
+    g_state.player->m_walking[g_state.player->LEFT]  = new int[4] { 5, 6, 7, 4 };
+    g_state.player->m_walking[g_state.player->RIGHT] = new int[4] { 9, 10, 11, 8 };
+    g_state.player->m_walking[g_state.player->UP]    = new int[4] { 1, 2, 3, 0 };
+    //g_state.player->m_walking[g_state.player->DOWN]  = new int[4] { 13, 14, 15, 16 };
 
-    g_state.player->m_animation_indices = g_state.player->m_walking[g_state.player->LEFT];  // start George looking left
+    g_state.player->m_animation_indices = g_state.player->m_walking[g_state.player->RIGHT];
     g_state.player->m_animation_frames = 4;
     g_state.player->m_animation_index  = 0;
     g_state.player->m_animation_time   = 0.0f;
@@ -197,11 +193,62 @@ void initialise()
     g_state.player->m_animation_rows   = 4;
     g_state.player->set_height(0.9f);
     g_state.player->set_width(0.9f);
-
+    
     // Jumping
-    g_state.player->m_jumping_power = 0.5f;
+    g_state.player->m_jumping_power = 5.0f;
+    
+    // BONE SET_UP //
+    g_state.weapon = new Entity();
+    g_state.weapon->set_entity_type(WEAPON);
+    g_state.weapon->set_position(g_state.player->m_position);
+    g_state.weapon->set_movement(glm::vec3(0.0f));
+    g_state.weapon->set_speed(2.5f);
+    g_state.weapon->set_acceleration(glm::vec3(0.0f, -9.81f, 0.0f));
+    g_state.weapon->m_texture_id = load_texture(BONE_FILE_PATH);
+    
+    // CHOCOLATE ENEMY //
+    GLuint enemy_texture_id = load_texture(ENEMY_FILEPATH);
 
-    // ––––– GENERAL ––––– //
+    g_state.enemies = new Entity[ENEMY_COUNT];
+    g_state.enemies[0].set_entity_type(ENEMY);
+    g_state.enemies[0].set_ai_type(GUARD);
+    g_state.enemies[0].set_ai_state(IDLE);
+    g_state.enemies[0].m_texture_id = enemy_texture_id;
+    g_state.enemies[0].set_position(glm::vec3(10.0f, 0.0f, 0.0f));
+    g_state.enemies[0].set_movement(glm::vec3(0.0f));
+    g_state.enemies[0].set_speed(0.5f);
+    g_state.enemies[0].set_acceleration(glm::vec3(0.0f, -9.81f, 0.0f));
+    
+    g_state.enemies[1].set_entity_type(ENEMY);
+    g_state.enemies[1].set_ai_type(WALKER);
+    g_state.enemies[1].set_ai_state(IDLE);
+    g_state.enemies[1].m_texture_id = enemy_texture_id;
+    g_state.enemies[1].set_position(glm::vec3(3.5f, -1.0f, 0.0f));
+    g_state.enemies[1].set_movement(glm::vec3(0.0f));
+    g_state.enemies[1].set_speed(0.5f);
+    g_state.enemies[1].set_acceleration(glm::vec3(0.0f, -9.81f, 0.0f));
+    
+    g_state.enemies[2].set_entity_type(ENEMY);
+    g_state.enemies[2].set_ai_type(JUMPER);
+    g_state.enemies[2].set_ai_state(IDLE);
+    g_state.enemies[2].m_texture_id = enemy_texture_id;
+    g_state.enemies[2].set_position(glm::vec3(8.5f, -1.0f, 0.0f));
+    g_state.enemies[2].set_movement(glm::vec3(0.0f));
+    g_state.enemies[2].set_speed(0.5f);
+    g_state.enemies[2].set_acceleration(glm::vec3(0.0f, -9.81f, 0.0f));
+    g_state.enemies[2].m_jumping_power = 4.0f;
+
+    
+
+    Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 4096);
+    
+    g_state.bgm = Mix_LoadMUS(BGM_FILEPATH);
+    Mix_PlayMusic(g_state.bgm, -1);
+    Mix_VolumeMusic(MIX_MAX_VOLUME / 4.0f);
+    
+    g_state.jump_sfx = Mix_LoadWAV(JUMP_SFX_FILEPATH);
+    
+    // ————— BLENDING ————— //
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
@@ -214,25 +261,33 @@ void process_input()
     while (SDL_PollEvent(&event))
     {
         switch (event.type) {
-                // End game
             case SDL_QUIT:
             case SDL_WINDOWEVENT_CLOSE:
-                g_game_is_running = false;
+                m_game_is_running = false;
                 break;
                 
             case SDL_KEYDOWN:
                 switch (event.key.keysym.sym) {
                     case SDLK_q:
                         // Quit the game with a keystroke
-                        g_game_is_running = false;
+                        m_game_is_running = false;
                         break;
                         
                     case SDLK_SPACE:
+                        
+                        g_state.player->m_animation_indices = g_state.player->m_walking[g_state.player->UP];
                         // Jump
-                        if ((g_state.player->m_fuel != 0)&&(message_display_time == 0)){
+                        if (g_state.player->m_collided_bottom)
+                        {
                             g_state.player->m_is_jumping = true;
-                            g_state.player->m_fuel -= 1.0f;
+                            Mix_PlayChannel(-1, g_state.jump_sfx, 0);
+            
                         }
+                        break;
+                        
+                    case SDLK_m:
+                        // Mute volume
+                        Mix_HaltMusic();
                         break;
                         
                     default:
@@ -245,27 +300,40 @@ void process_input()
     }
     
     const Uint8 *key_state = SDL_GetKeyboardState(NULL);
-    if (message_display_time == 0 && (g_state.player->m_fuel != 0)){
-        if (key_state[SDL_SCANCODE_LEFT])
-        {
-            g_state.player->m_acceleration.x += -0.5f;
-            g_state.player->m_animation_indices = g_state.player->m_walking[g_state.player->LEFT];
-            g_state.player->m_fuel -= 1.0f;
-            
-        }
-        else if (key_state[SDL_SCANCODE_RIGHT])
-        {
-            g_state.player->m_acceleration.x += 0.5f;
-            g_state.player->m_animation_indices = g_state.player->m_walking[g_state.player->RIGHT];
-            g_state.player->m_fuel -= 1.0f;
-        }
+
+    if (key_state[SDL_SCANCODE_LEFT])
+    {
+        g_state.player->move_left();
+        g_state.player->m_animation_indices = g_state.player->m_walking[g_state.player->LEFT];
+    }
+    else if (key_state[SDL_SCANCODE_RIGHT])
+    {
+        g_state.player->move_right();
+        g_state.player->m_animation_indices = g_state.player->m_walking[g_state.player->RIGHT];
+    }
+//    else if (key_state[SDL_SCANCODE_DOWN]){
+//        summon_bone = true;
+//        g_state.weapon->m_position = glm::vec3(g_state.player->get_position().x + 1.0f, 0.0f, 0.0f);
+//    }
+    else if (key_state[SDL_SCANCODE_D]){
+        summon_bone = true;
+        g_state.weapon->m_position = glm::vec3(g_state.player->get_position().x, g_state.player->get_position().y, 0.0f);
+        g_state.weapon->move_right();
         
-        if (glm::length(g_state.player->m_movement) > 1.0f)
-        {
-            g_state.player->m_movement = glm::normalize(g_state.player->m_movement);
-        }
+    }
+    else if (key_state[SDL_SCANCODE_A]){
+        summon_bone = true;
+        g_state.weapon->m_position = glm::vec3(g_state.player->get_position().x, g_state.player->get_position().y, 0.0f);
+        g_state.weapon->move_left();
+    }
+    
+    // This makes sure that the player can't move faster diagonally
+    if (glm::length(g_state.player->m_movement) > 1.0f)
+    {
+        g_state.player->m_movement = glm::normalize(g_state.player->m_movement);
     }
 }
+
 void draw_text(ShaderProgram *program, GLuint font_texture_id, std::string text, float screen_size, float spacing, glm::vec3 position)
 {
     // Scale the size of the fontbank in the UV-plane
@@ -317,125 +385,119 @@ void draw_text(ShaderProgram *program, GLuint font_texture_id, std::string text,
     glUseProgram(program->get_program_id());
     
     glVertexAttribPointer(program->get_position_attribute(), 2, GL_FLOAT, false, 0, vertices.data());
-    glEnableVertexAttribArray(g_program.get_position_attribute());
-    glVertexAttribPointer(g_program.get_tex_coordinate_attribute(), 2, GL_FLOAT, false, 0, texture_coordinates.data());
-    glEnableVertexAttribArray(g_program.get_tex_coordinate_attribute());
+    glEnableVertexAttribArray(m_program.get_position_attribute());
+    glVertexAttribPointer(m_program.get_tex_coordinate_attribute(), 2, GL_FLOAT, false, 0, texture_coordinates.data());
+    glEnableVertexAttribArray(m_program.get_tex_coordinate_attribute());
     
     glBindTexture(GL_TEXTURE_2D, font_texture_id);
     glDrawArrays(GL_TRIANGLES, 0, (int) (text.size() * 6));
     
-    glDisableVertexAttribArray(g_program.get_position_attribute());
-    glDisableVertexAttribArray(g_program.get_tex_coordinate_attribute());
-}
-
-bool main_check_collision(glm::vec3 &position_a, glm::vec3 &position_b)
-{
-    return sqrt(
-                pow(position_b[0] - position_a[0], 2) +
-                pow(position_b[1] - position_a[1], 2)
-            ) < MINIMUM_COLLISION_DISTANCE;
+    glDisableVertexAttribArray(m_program.get_position_attribute());
+    glDisableVertexAttribArray(m_program.get_tex_coordinate_attribute());
 }
 
 void update()
 {
     float ticks = (float)SDL_GetTicks() / MILLISECONDS_IN_SECOND;
-    float delta_time = ticks - g_previous_ticks;
-    g_previous_ticks = ticks;
-
-    delta_time += g_accumulator;
-
+    float delta_time = ticks - m_previous_ticks;
+    m_previous_ticks = ticks;
+    
+    delta_time += m_accumulator;
+    
     if (delta_time < FIXED_TIMESTEP)
     {
-        g_accumulator = delta_time;
+        m_accumulator = delta_time;
         return;
     }
-
+    
     while (delta_time >= FIXED_TIMESTEP)
     {
-        g_state.player->update(FIXED_TIMESTEP, g_state.platforms, PLATFORM_COUNT);
+        g_state.player->update(FIXED_TIMESTEP, g_state.player, NULL, 0, g_state.map);
+        if (summon_bone){
+            g_state.weapon->update(FIXED_TIMESTEP, g_state.weapon, g_state.enemies, 3, g_state.map);
+        }
+        
+        for (int i = 0; i < ENEMY_COUNT; i++) g_state.enemies[i].update(FIXED_TIMESTEP, g_state.enemies, g_state.player, 1, g_state.map);
+        
         delta_time -= FIXED_TIMESTEP;
     }
-
-    g_accumulator = delta_time;
     
-    int win_platform_2 = PLATFORM_COUNT - 2;
-    int win_platform_1 = PLATFORM_COUNT - 1;
-
-    // Check for winning condition
-    if (g_state.player->m_collided_bottom)
-    {
-        if (main_check_collision(g_state.player->m_position, g_state.platforms[win_platform_2].m_position))
-       {
-           won_message_displayed = true;
-           g_state.player->set_acceleration(glm::vec3(0.0f, -0.5f, 0.0f));
-           std::cout << "time: "<< message_display_time << std::endl;
-           message_display_time += delta_time;
-       }
-        else if(main_check_collision(g_state.player->m_position, g_state.platforms[win_platform_1].m_position))
-        {
-            won_message_displayed = true;
-            g_state.player->set_acceleration(glm::vec3(0.0f, -0.5f, 0.0f));
-            std::cout << "time: "<< message_display_time << std::endl;
-            message_display_time += delta_time;
-        }
-        else {
-            lost_message_displayed = true;
-            // g_state.player->set_acceleration(glm::vec3(0.0f, -0.5f, 0.0f));
-            std::cout << "time: "<< message_display_time << std::endl;
-            message_display_time += delta_time;
+    m_accumulator = delta_time;
+    
+    
+    int total_gone = 0;
+    for (int i = 0; i < ENEMY_COUNT; i++){
+        if (g_state.enemies[i].m_is_active == false){
+            total_gone+=1;
         }
     }
+    
+    if (total_gone == ENEMY_COUNT){
+        won = true;
+        message_display_time += delta_time;
+    }
+    if (g_state.player->m_is_active == false){
+        lost = true;
+        message_display_time += delta_time;
+    }
+    m_view_matrix = glm::mat4(1.0f);
+    m_view_matrix = glm::translate(m_view_matrix, glm::vec3(-g_state.player->get_position().x, 0.0f, 0.0f));
     
     //Check if the delay has passed
     if (message_display_time >= 2.0f)
     {
-        g_game_is_running = false;
+        m_game_is_running = false;
     }
-    
 }
+
 
 void render()
 {
+    m_program.set_view_matrix(m_view_matrix);
+    
     glClear(GL_COLOR_BUFFER_BIT);
-
-    g_state.player->render(&g_program);
-
-    for (int i = 0; i < PLATFORM_COUNT; i++) g_state.platforms[i].render(&g_program);
-    if (won_message_displayed){
-        draw_text(&g_program, font_texture_id, "You Win!", 1.0f, 0.1f, glm::vec3(-3.8f, 0.0f, 0.0f));
+    if (summon_bone){
+        g_state.weapon->render(&m_program);
     }
-    if (lost_message_displayed){
-        draw_text(&g_program, font_texture_id, "You Lose", 1.0f, 0.1f, glm::vec3(-3.8f, 0.0f, 0.0f));
+    g_state.player->render(&m_program);
+    
+    for (int i = 0; i < ENEMY_COUNT; i++)    g_state.enemies[i].render(&m_program);
+    g_state.map->render(&m_program);
+    
+    if (won){
+        draw_text(&m_program, font_texture_id, "You Win!", 1.0f, 0.01f, glm::vec3(g_state.player->m_position.x - 3.5f, 0.0f, 0.0f));
     }
-    std::string fuel_text = "Fuel: " + std::to_string(g_state.player->m_fuel);
-    draw_text(&g_program, font_texture_id, fuel_text, 0.5f, 0.1f, glm::vec3(-4.0f, 3.5f, 0.0f));
-
-    SDL_GL_SwapWindow(g_display_window);
+    if (lost){
+        draw_text(&m_program, font_texture_id, "You Lose", 1.0f, 0.01f, glm::vec3(g_state.player->m_position.x - 3.5f, 0.0f, 0.0f));
+    }
+    
+    SDL_GL_SwapWindow(m_display_window);
 }
 
 void shutdown()
 {
     SDL_Quit();
-
-    delete [] g_state.platforms;
-    delete g_state.player;
+    
+    delete [] g_state.enemies;
+    delete    g_state.player;
+    delete    g_state.map;
+    delete    g_state.weapon;
+    Mix_FreeChunk(g_state.jump_sfx);
+    Mix_FreeMusic(g_state.bgm);
 }
 
-
-
-// ––––– GAME LOOP ––––– //
+// ————— GAME LOOP ————— //
 int main(int argc, char* argv[])
 {
     initialise();
-
-    while (g_game_is_running)
+    
+    while (m_game_is_running)
     {
         process_input();
         update();
         render();
-
     }
-
+    
     shutdown();
     return 0;
 }
