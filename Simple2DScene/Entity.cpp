@@ -80,11 +80,12 @@ void Entity::ai_activate(Entity* player)
     case WALKER:
         ai_walk();
         break;
-
+    case WALKERC:
+        ai_walkC();
+        break;
     case GUARD:
         ai_guard(player);
         break;
-            
     case JUMPER:
         ai_jump();
         break;
@@ -108,10 +109,27 @@ void Entity::ai_walk()
     }
     
 }
+bool leftcloudC = false;
+void Entity::ai_walkC()
+{
+    if (leftcloudC == false)
+        m_movement = glm::vec3(-1.0f, 0.0f, 0.0f); // Move left
+    if(m_position.x == 1 ){
+        leftcloudC = true;
+        m_movement = glm::vec3(1.0f, 0.0f, 0.0f);
+    }
+    if (m_position.x == 2){
+        leftcloudC = false;
+    }
+    
+}
 
 void Entity::ai_jump()
 {
-    if (m_position.y == -3)
+    if(m_position.y == -2) {
+        m_velocity.y += m_jumping_power;
+    }
+    if (m_position.y == -6)
     {
         m_velocity.y += m_jumping_power;
     }
@@ -142,7 +160,18 @@ void Entity::ai_guard(Entity* player)
 void Entity::update(float delta_time, Entity* player, Entity* objects, int object_count, Map* map)
 {
     if (!m_is_active) return;
-
+    if (m_entity_type == PLAYER) {
+        if (m_lives == 0){
+            deactivate();
+        }
+        if (m_position.y < -9){
+            m_lives -= 1;
+            set_position(glm::vec3(3.0,0.0,0.0));
+        }
+    }
+    if (m_entity_type != WEAPON && m_position.y < -9){
+        deactivate();
+    }
     m_collided_top = false;
     m_collided_bottom = false;
     m_collided_left = false;
@@ -189,6 +218,18 @@ void Entity::update(float delta_time, Entity* player, Entity* objects, int objec
 
         m_velocity.y += m_jumping_power;
     }
+    //std::cout << m_invincible << std::endl;
+    if (m_entity_type == PLAYER && m_invincible == true){
+       // std::cout << get_buffer() << std::endl;
+        float timetoadd = 0.0f;
+        timetoadd = get_buffer();
+        set_buffer(timetoadd += delta_time);
+    }
+    
+    if(get_buffer() >= 2.0f){
+        set_invincible(false);
+        set_buffer(0.0f);
+    }
 
     m_model_matrix = glm::mat4(1.0f);
     m_model_matrix = glm::translate(m_model_matrix, m_position);
@@ -202,30 +243,50 @@ void const Entity::check_collision_y(Entity* collidable_entities, int collidable
         Entity* collidable_entity = &collidable_entities[i];
         if (check_collision(collidable_entity))
         {
+            
+            //std::cout << "y collision" << std::endl;
             float y_distance = fabs(m_position.y - collidable_entity->get_position().y);
             float y_overlap = fabs(y_distance - (m_height / 2.0f) - (collidable_entity->get_height() / 2.0f));
             if (m_velocity.y > 0) {
-                m_position.y -= y_overlap;
-                m_velocity.y = 0;
+                //std::cout << "y > 0" << std::endl;
                 m_collided_top = true;
-                if(collidable_entity->get_entity_type() == PLAYER && m_entity_type == ENEMY){
-                    collidable_entity->deactivate();
+                if(m_entity_type == ENEMY && collidable_entity->m_invincible == false){
+                    m_position.y -= y_overlap;
+                    m_velocity.y = 0;
+                    collidable_entity->m_lives -= 1;
+                    collidable_entity->set_invincible(true);
+//                    collidable_entity->set_position(glm::vec3(collidable_entity->m_position.x + 2, )
+                }
+                else if(m_entity_type == PLAYER && m_invincible == false){
+                    m_position.y -= y_overlap;
+                    m_velocity.y = 0;
+                //"player got hit top side"
+                    m_lives -= 1; //kill itself
+                    set_invincible(true);
                 }
                 else if(collidable_entity->get_entity_type() == ENEMY && m_entity_type == WEAPON){
                     collidable_entity->deactivate();
                 }
 
             }
-            else if (m_velocity.y < 0) {
+            else if (m_entity_type == ENEMY && m_velocity.y < 0 && collidable_entity->m_invincible == false) {
+                //std::cout << "ENEMY FALLING KILL PLAYER" << std::endl;
                 m_position.y += y_overlap;
                 m_velocity.y = 0;
                 m_collided_bottom = true;
-                if(collidable_entity->get_entity_type() == PLAYER && m_entity_type == ENEMY){
-                    deactivate();
-                }
-                else if(collidable_entity->get_entity_type() == ENEMY && m_entity_type == WEAPON){
-                    collidable_entity->deactivate();
-                }
+                collidable_entity->m_lives -= 1;
+                collidable_entity->set_invincible(true);
+            }
+            else if (m_entity_type == PLAYER && m_velocity.y < 0 && m_invincible == false) {
+                //std::cout << "PLAYER FALLING SHOULD KILL ENEMY" << std::endl;
+                m_position.y += y_overlap;
+                m_velocity.y = 0;
+                m_collided_bottom = true;
+                m_lives -= 1;
+                set_invincible(true);
+            }
+            else if(collidable_entity->get_entity_type() == ENEMY && m_entity_type == WEAPON){
+                collidable_entity->deactivate();
             }
         }
     }
@@ -241,25 +302,42 @@ void const Entity::check_collision_x(Entity* collidable_entities, int collidable
         {
             float x_distance = fabs(m_position.x - collidable_entity->get_position().x);
             float x_overlap = fabs(x_distance - (m_width / 2.0f) - (collidable_entity->get_width() / 2.0f));
-            if (m_velocity.x > 0) {
-                m_position.x -= x_overlap;
-                m_velocity.x = 0;
+            if (m_velocity.x > 0 && m_velocity.y > 0) {
                 m_collided_right = true;
-                if(collidable_entity->get_entity_type() == PLAYER){
-                    collidable_entity->deactivate();
+                if(m_entity_type == PLAYER && m_invincible == false){
+                    m_position.x -= x_overlap;
+                    m_velocity.x = 0;
+                   // std::cout << "player should die from right" << std::endl; //good
+                    m_lives -= 1;
+                    set_invincible(true);
                 }
-                if(collidable_entity->get_entity_type() == ENEMY && m_entity_type == WEAPON){
+                else if(m_entity_type == ENEMY && collidable_entity->m_invincible == false){
+                    m_position.x -= x_overlap;
+                    m_velocity.x = 0;
+                    collidable_entity->m_lives -= 1;
+                    collidable_entity->set_invincible(true);
+                }
+                else if(collidable_entity->get_entity_type() == ENEMY && m_entity_type == WEAPON){
                     collidable_entity->deactivate();
                 }
             }
             else if (m_velocity.x < 0) {
-                m_position.x += x_overlap;
-                m_velocity.x = 0;
                 m_collided_left = true;
-                if(collidable_entity->get_entity_type() == PLAYER){
-                    collidable_entity->deactivate();
+                if(m_entity_type == PLAYER && m_invincible == false){
+                    m_position.x += x_overlap;
+                    m_velocity.x = 0;
+                   // std::cout << "player should die from left" << std::endl;
+                    m_lives -= 1;
+                    set_invincible(true);
                 }
-                if(collidable_entity->get_entity_type() == ENEMY && m_entity_type == WEAPON){
+                else if(m_entity_type == ENEMY && collidable_entity->m_invincible == false){
+                    m_position.x += x_overlap;
+                    m_velocity.x = 0;
+                    //std::cout << "player should die from left" << std::endl;
+                    collidable_entity->m_lives -= 1;
+                    collidable_entity->set_invincible(true);
+                }
+                else if(collidable_entity->get_entity_type() == ENEMY && m_entity_type == WEAPON){
                     collidable_entity->deactivate();
                 }
             }

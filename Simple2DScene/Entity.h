@@ -1,7 +1,7 @@
 #include "Map.h"
 
 enum EntityType { PLATFORM, PLAYER, ENEMY, WEAPON  };
-enum AIType     { WALKER, GUARD, JUMPER     };
+enum AIType     { WALKER, GUARD, JUMPER, WALKERC   };
 enum AIState    { WALKING, IDLE, JUMPING  };
 
 class Entity
@@ -33,7 +33,8 @@ public:
 
     float m_width = 1;
     float m_height = 1;
-
+    float m_lives = 3;
+    bool m_invincible = false;
 
 public:
     // ————— STATIC VARIABLES ————— //
@@ -63,6 +64,9 @@ public:
     // ––––– PHYSICS (JUMPING) ––––– //
     bool  m_is_jumping = false;
     float m_jumping_power = 0;
+    
+    float buffer = 0.0f;
+
 
     // ––––– PHYSICS (COLLISIONS) ––––– //
     bool m_collided_top = false;
@@ -95,8 +99,10 @@ public:
 
     void ai_activate(Entity* player);
     void ai_walk();
+    void ai_walkC();
     void ai_jump();
     void ai_guard(Entity* player);
+    
 
     void activate() { m_is_active = true; };
     void deactivate() { m_is_active = false; };
@@ -113,6 +119,8 @@ public:
     float      const get_speed()          const { return m_speed;           };
     int        const get_width()          const { return m_width;           };
     int        const get_height()         const { return m_height;          };
+    float        const get_lives()          const { return m_lives;           };
+    float       const get_buffer()          const {return buffer; };
 
     // ————— SETTERS ————— //
     void const set_entity_type(EntityType new_entity_type)  { m_entity_type = new_entity_type;      };
@@ -126,4 +134,8 @@ public:
     void const set_acceleration(glm::vec3 new_acceleration) { m_acceleration = new_acceleration;    };
     void const set_width(float new_width)                   { m_width = new_width;                  };
     void const set_height(float new_height)                 { m_height = new_height;                };
+    void const set_lives(float new_lives)                   { m_lives = new_lives;                  };
+    void const set_invincible(bool new_invincible)          { m_invincible = new_invincible;        };
+    void const set_buffer(float new_time)                   { buffer = new_time;        };
+
 };

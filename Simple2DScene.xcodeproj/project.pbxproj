@@ -7,6 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		653656A12BC1F84000A8B868 /* LevelA.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6536569F2BC1F84000A8B868 /* LevelA.cpp */; };
+		653656A42BC1F99200A8B868 /* Utility.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 653656A22BC1F99200A8B868 /* Utility.cpp */; };
+		653656A72BC1FEBE00A8B868 /* Scene.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 653656A52BC1FEBE00A8B868 /* Scene.cpp */; };
+		653656B02BC751B500A8B868 /* MenuScreen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 653656AE2BC751B500A8B868 /* MenuScreen.cpp */; };
+		653656B32BC8363A00A8B868 /* LevelB.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 653656B12BC8363A00A8B868 /* LevelB.cpp */; };
+		653656B62BCADE9400A8B868 /* LevelC.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 653656B42BCADE9400A8B868 /* LevelC.cpp */; };
 		654C9F322BB793B6001ACF5E /* Map.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 654C9F302BB793B6001ACF5E /* Map.cpp */; };
 		654C9F342BB799A6001ACF5E /* SDL2_mixer.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 654C9F332BB799A6001ACF5E /* SDL2_mixer.framework */; };
 		654E82392B9CF71500F5F54F /* Entity.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 654E82372B9CF71500F5F54F /* Entity.cpp */; };
@@ -35,6 +41,18 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		6536569F2BC1F84000A8B868 /* LevelA.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = LevelA.cpp; sourceTree = "<group>"; };
+		653656A02BC1F84000A8B868 /* LevelA.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LevelA.h; sourceTree = "<group>"; };
+		653656A22BC1F99200A8B868 /* Utility.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Utility.cpp; sourceTree = "<group>"; };
+		653656A32BC1F99200A8B868 /* Utility.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Utility.h; sourceTree = "<group>"; };
+		653656A52BC1FEBE00A8B868 /* Scene.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Scene.cpp; sourceTree = "<group>"; };
+		653656A62BC1FEBE00A8B868 /* Scene.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Scene.h; sourceTree = "<group>"; };
+		653656AE2BC751B500A8B868 /* MenuScreen.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = MenuScreen.cpp; sourceTree = "<group>"; };
+		653656AF2BC751B500A8B868 /* MenuScreen.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MenuScreen.h; sourceTree = "<group>"; };
+		653656B12BC8363A00A8B868 /* LevelB.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = LevelB.cpp; sourceTree = "<group>"; };
+		653656B22BC8363A00A8B868 /* LevelB.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LevelB.h; sourceTree = "<group>"; };
+		653656B42BCADE9400A8B868 /* LevelC.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = LevelC.cpp; sourceTree = "<group>"; };
+		653656B52BCADE9400A8B868 /* LevelC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LevelC.h; sourceTree = "<group>"; };
 		654C9F302BB793B6001ACF5E /* Map.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Map.cpp; sourceTree = "<group>"; };
 		654C9F312BB793B6001ACF5E /* Map.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Map.h; sourceTree = "<group>"; };
 		654C9F332BB799A6001ACF5E /* SDL2_mixer.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL2_mixer.framework; path = ../../../../../Library/Frameworks/SDL2_mixer.framework; sourceTree = "<group>"; };
@@ -97,10 +115,22 @@
 				659592E62B814320000CCAEB /* shaders */,
 				659592FB2B814603000CCAEB /* stb_image.h */,
 				659592DF2B814207000CCAEB /* main.cpp */,
+				653656AE2BC751B500A8B868 /* MenuScreen.cpp */,
+				653656AF2BC751B500A8B868 /* MenuScreen.h */,
 				654C9F302BB793B6001ACF5E /* Map.cpp */,
 				654C9F312BB793B6001ACF5E /* Map.h */,
 				654E82372B9CF71500F5F54F /* Entity.cpp */,
 				654E82382B9CF71500F5F54F /* Entity.h */,
+				6536569F2BC1F84000A8B868 /* LevelA.cpp */,
+				653656A02BC1F84000A8B868 /* LevelA.h */,
+				653656B12BC8363A00A8B868 /* LevelB.cpp */,
+				653656B22BC8363A00A8B868 /* LevelB.h */,
+				653656B42BCADE9400A8B868 /* LevelC.cpp */,
+				653656B52BCADE9400A8B868 /* LevelC.h */,
+				653656A22BC1F99200A8B868 /* Utility.cpp */,
+				653656A32BC1F99200A8B868 /* Utility.h */,
+				653656A52BC1FEBE00A8B868 /* Scene.cpp */,
+				653656A62BC1FEBE00A8B868 /* Scene.h */,
 			);
 			path = Simple2DScene;
 			sourceTree = "<group>";
@@ -174,10 +204,16 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				653656A42BC1F99200A8B868 /* Utility.cpp in Sources */,
+				653656A72BC1FEBE00A8B868 /* Scene.cpp in Sources */,
 				659592E02B814207000CCAEB /* main.cpp in Sources */,
 				654E82392B9CF71500F5F54F /* Entity.cpp in Sources */,
+				653656B62BCADE9400A8B868 /* LevelC.cpp in Sources */,
+				653656B02BC751B500A8B868 /* MenuScreen.cpp in Sources */,
 				654C9F322BB793B6001ACF5E /* Map.cpp in Sources */,
+				653656B32BC8363A00A8B868 /* LevelB.cpp in Sources */,
 				659592F92B8145E0000CCAEB /* ShaderProgram.cpp in Sources */,
+				653656A12BC1F84000A8B868 /* LevelA.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
