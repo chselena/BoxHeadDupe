@@ -26,6 +26,10 @@ struct GameState
     Entity *player;
     Entity *enemies;
     Entity *weapon;
+    Entity *loot;
+    Entity *loot2;
+    Entity *bullet;
+    Entity *health;
     
     // ————— AUDIO ————— //
     Mix_Music *bgm;
@@ -39,6 +43,7 @@ struct GameState
     bool won;
     bool lost;
     bool summon_bone;
+    bool summon_bullet;
 };
 
 class Scene {

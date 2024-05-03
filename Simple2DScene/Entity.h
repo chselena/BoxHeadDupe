@@ -1,19 +1,27 @@
 #include "Map.h"
 
-enum EntityType { PLATFORM, PLAYER, ENEMY, WEAPON  };
-enum AIType     { WALKER, GUARD, JUMPER, WALKERC   };
+enum EntityType { PLATFORM, PLAYER, ENEMY, WEAPON, LOOT, LOOT2, BULLET, HEALTH  };
+enum AIType     { GUARD, TANK };
 enum AIState    { WALKING, IDLE, JUMPING  };
 
 class Entity
 {
 public:
     bool m_is_active = true;
+    bool gunner = false;
+    bool bullet = false;
+    bool nullbullet = false;
+    bool renderable = true;
+    
+    bool firer = false;
+    bool fireball = false;
 
     // ––––– ANIMATION ––––– //
     int* m_animation_right = NULL, // move to the right
         * m_animation_left = NULL, // move to the left
         * m_animation_up   = NULL, // move upwards
-        * m_animation_down = NULL; // move downwards
+        * m_animation_down = NULL, // move downwards
+    * m_animation_shoot = NULL;
 
     // ––––– PHYSICS (GRAVITY) ––––– //
     glm::vec3 m_position;
@@ -42,15 +50,17 @@ public:
     static const int    LEFT    = 0,
                         RIGHT   = 1,
                         UP      = 2,
-                        DOWN    = 3;
+                        DOWN    = 3,
+                        SHOOT  = 4;
 
     // ————— ANIMATION ————— //
-    int** m_walking = new int* [4]
+    int** m_walking = new int* [5]
         {
             m_animation_left,
             m_animation_right,
             m_animation_up,
-            m_animation_down
+            m_animation_down,
+            m_animation_shoot
         };
 
     int m_animation_frames  = 0,
@@ -98,14 +108,16 @@ public:
     void move_down()    { m_movement.y = -1.0f; };
 
     void ai_activate(Entity* player);
-    void ai_walk();
-    void ai_walkC();
-    void ai_jump();
+    void ai_morehealth();
     void ai_guard(Entity* player);
     
-
+//looking right, diff array of texture coordinates
     void activate() { m_is_active = true; };
     void deactivate() { m_is_active = false; };
+    void transform() { gunner = !gunner; }
+    void shootbullet() {bullet = !bullet;}
+
+    void blastfire() {fireball = !fireball;}
 
     // ————— GETTERS ————— //
     EntityType const get_entity_type()    const { return m_entity_type;     };

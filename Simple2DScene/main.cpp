@@ -38,10 +38,7 @@
 const int WINDOW_WIDTH  = 640,
           WINDOW_HEIGHT = 480;
 
-const float BG_RED     = 0.1922f,
-            BG_BLUE    = 0.549f,
-            BG_GREEN   = 0.9059f,
-            BG_OPACITY = 1.0f;
+
 
 const int VIEWPORT_X = 0,
           VIEWPORT_Y = 0,
@@ -59,7 +56,10 @@ MenuScreen *g_menu_screen;
 LevelA *g_level_a;
 LevelB *g_level_b;
 LevelC *g_level_c;
-
+const float BG_RED     = 0.2f,
+           BG_BLUE    = 0.2f,
+           BG_GREEN   = 0.2f,
+           BG_OPACITY = 1.0f;
 SDL_Window* g_display_window;
 bool g_game_is_running = true;
 
@@ -79,7 +79,7 @@ void initialise()
 {
     // ————— VIDEO ————— //
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
-    g_display_window = SDL_CreateWindow("Platformer",
+    g_display_window = SDL_CreateWindow("Box Head Dupe",
                                       SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                       WINDOW_WIDTH, WINDOW_HEIGHT,
                                       SDL_WINDOW_OPENGL);
@@ -100,7 +100,6 @@ void initialise()
     
     g_shader_program.set_projection_matrix(g_projection_matrix);
     g_shader_program.set_view_matrix(g_view_matrix);
-    
     glUseProgram(g_shader_program.get_program_id());
     
     glClearColor(BG_RED, BG_BLUE, BG_GREEN, BG_OPACITY);
@@ -125,40 +124,45 @@ void process_input()
     while (SDL_PollEvent(&event))
     {
         switch (event.type) {
-        case SDL_QUIT:
-        case SDL_WINDOWEVENT_CLOSE:
-            g_game_is_running  = false;
-            break;
-
-        case SDL_KEYDOWN:
-            switch (event.key.keysym.sym) {
-            case SDLK_q:
-                // Quit the game with a keystroke
+            case SDL_QUIT:
+            case SDL_WINDOWEVENT_CLOSE:
                 g_game_is_running  = false;
                 break;
-            case SDLK_RETURN:
-                switch_to_scene(g_level_a);
-                break;
-            case SDLK_SPACE:
-                // Jump
-                    if (g_current_scene->m_state.player->m_collided_bottom)
-                {
-                    g_current_scene->m_state.player->m_is_jumping = true;
-                    Mix_PlayChannel(-1, g_current_scene->m_state.jump_sfx, 0);
+                
+            case SDL_KEYDOWN:
+                switch (event.key.keysym.sym) {
+                    case SDLK_q:
+                        // Quit the game with a keystroke
+                        g_game_is_running  = false;
+                        break;
+                    case SDLK_RETURN:
+                        switch_to_scene(g_level_a);
+                        break;
+                    case SDLK_SPACE:
+                        if(g_current_scene->m_state.player->bullet){
+                            g_current_scene->m_state.summon_bullet = true;
+                            g_current_scene->m_state.bullet->renderable = true;
+                            g_current_scene->m_state.bullet->nullbullet = false;
+                            g_current_scene->m_state.player->m_animation_indices = g_current_scene->m_state.player->m_walking[g_current_scene->m_state.player->SHOOT];
+                            
+                            
+                            g_current_scene->m_state.bullet->set_position(glm::vec3(g_current_scene->m_state.player->get_position().x, g_current_scene->m_state.player->get_position().y -0.15f , 0.0f));
+                            g_current_scene->m_state.bullet->move_right();
+                            //g_current_scene->m_state.player->transform();
+                        }
+                        break;
+                        
+                    default:
+                        break;
                 }
-                break;
-
+                
             default:
                 break;
-            }
-
-        default:
-            break;
         }
     }
-
+    
     const Uint8* key_state = SDL_GetKeyboardState(NULL);
-
+    
     if (key_state[SDL_SCANCODE_LEFT])
     {
         g_current_scene->m_state.player->move_left();
@@ -169,16 +173,30 @@ void process_input()
         g_current_scene->m_state.player->move_right();
         g_current_scene->m_state.player->m_animation_indices = g_current_scene->m_state.player->m_walking[g_current_scene->m_state.player->RIGHT];
     }
-    else if (key_state[SDL_SCANCODE_D]){
+    else if (key_state[SDL_SCANCODE_UP])
+    {
+        g_current_scene->m_state.player->move_up();
+        g_current_scene->m_state.player->m_animation_indices = g_current_scene->m_state.player->m_walking[g_current_scene->m_state.player->UP];
+    }
+    else if (key_state[SDL_SCANCODE_DOWN])
+    {
+        g_current_scene->m_state.player->move_down();
+        g_current_scene->m_state.player->m_animation_indices = g_current_scene->m_state.player->m_walking[g_current_scene->m_state.player->DOWN];
+    }
+    else if (key_state[SDL_SCANCODE_D] && g_current_scene->m_state.player->fireball){
         g_current_scene->m_state.summon_bone = true;
         g_current_scene->m_state.weapon->m_position = glm::vec3(g_current_scene->m_state.player->get_position().x, g_current_scene->m_state.player->get_position().y, 0.0f);
         g_current_scene->m_state.weapon->move_right();
+        Mix_PlayChannel(-1, g_current_scene->m_state.jump_sfx, 0);
+        g_current_scene->m_state.player->blastfire(); //no more after one shot
         
     }
-    else if (key_state[SDL_SCANCODE_A]){
+    else if (key_state[SDL_SCANCODE_A] && g_current_scene->m_state.player->fireball){
         g_current_scene->m_state.summon_bone = true;
         g_current_scene->m_state.weapon->m_position = glm::vec3(g_current_scene->m_state.player->get_position().x, g_current_scene->m_state.player->get_position().y, 0.0f);
         g_current_scene->m_state.weapon->move_left();
+        Mix_PlayChannel(-1, g_current_scene->m_state.jump_sfx, 0);
+        g_current_scene->m_state.player->blastfire(); //no more after one shot
     }
 
     // This makes sure that the player can't move faster diagonally
@@ -223,7 +241,7 @@ void update()
     
     if (g_current_scene->m_state.won == true){
         float lives_prev = g_current_scene->m_state.player->get_lives();
-        std::cout << lives_prev << std::endl;
+        std::cout << g_current_scene->m_state.next_scene_id << std::endl;
         if (g_current_scene->m_state.next_scene_id == 2){
             switch_to_scene(g_level_b);
             g_current_scene->m_state.player->set_lives(lives_prev);
@@ -234,6 +252,9 @@ void update()
             g_current_scene->m_state.player->set_lives(lives_prev);
         }
     }
+//    
+//    std::cout << g_current_scene->m_state.player->m_position.x << std::endl;
+//    std::cout << g_current_scene->m_state.player->m_position.y << std::endl;
 }
 
 void render()

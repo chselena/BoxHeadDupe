@@ -77,17 +77,12 @@ void Entity::ai_activate(Entity* player)
 {
     switch (m_ai_type)
     {
-    case WALKER:
-        ai_walk();
-        break;
-    case WALKERC:
-        ai_walkC();
-        break;
+
     case GUARD:
         ai_guard(player);
         break;
-    case JUMPER:
-        ai_jump();
+    case TANK:
+        ai_morehealth();
         break;
             
     default:
@@ -95,72 +90,52 @@ void Entity::ai_activate(Entity* player)
     }
 }
 
-bool leftcloud = false;
-void Entity::ai_walk()
-{
-    if (leftcloud == false)
-        m_movement = glm::vec3(-1.0f, 0.0f, 0.0f); // Move left
-    if(m_position.x == 2){
-        leftcloud = true;
-        m_movement = glm::vec3(1.0f, 0.0f, 0.0f);
-    }
-    if (m_position.x == 4){
-        leftcloud = false;
-    }
-    
-}
-bool leftcloudC = false;
-void Entity::ai_walkC()
-{
-    if (leftcloudC == false)
-        m_movement = glm::vec3(-1.0f, 0.0f, 0.0f); // Move left
-    if(m_position.x == 1 ){
-        leftcloudC = true;
-        m_movement = glm::vec3(1.0f, 0.0f, 0.0f);
-    }
-    if (m_position.x == 2){
-        leftcloudC = false;
-    }
-    
-}
 
-void Entity::ai_jump()
+void Entity::ai_morehealth()
 {
-    if(m_position.y == -2) {
-        m_velocity.y += m_jumping_power;
-    }
-    if (m_position.y == -6)
-    {
-        m_velocity.y += m_jumping_power;
-    }
+    set_lives(2);
 }
 
 void Entity::ai_guard(Entity* player)
 {
     switch (m_ai_state) {
-    case IDLE:
-        if (glm::distance(m_position, player->get_position()) < 5.0f) m_ai_state = WALKING;
-        break;
-
-    case WALKING:
-        if (m_position.x > player->get_position().x) {
-            m_movement = glm::vec3(-1.0f, 0.0f, 0.0f);
+        case IDLE:
+            if (glm::distance(m_position, player->get_position()) < 8.0f) m_ai_state = WALKING;
+            break;
+            
+        case WALKING:
+        {
+            glm::vec3 playerPos = player->get_position();
+            if (glm::distance(m_position, playerPos) < 5.0f) {
+                if (abs(m_position.x - playerPos.x) > abs(m_position.y - playerPos.y)) {
+                    if (m_position.x > playerPos.x) {
+                        m_movement = glm::vec3(-1.0f, 0.0f, 0.0f);
+                        m_animation_indices = m_walking[LEFT];
+                    } else {
+                        m_movement = glm::vec3(1.0f, 0.0f, 0.0f);
+                        m_animation_indices = m_walking[RIGHT];
+                    }
+                } else {
+                    if (m_position.y > playerPos.y) {
+                        m_movement = glm::vec3(0.0f, -1.0f, 0.0f);
+                        m_animation_indices = m_walking[DOWN];
+                    } else {
+                        m_movement = glm::vec3(0.0f, 1.0f, 0.0f);
+                        m_animation_indices = m_walking[UP];
+                    }
+                }
+            }
         }
-        else {
-            m_movement = glm::vec3(1.0f, 0.0f, 0.0f);
-        }
-        break;
-
-    default:
-        break;
+            break;
     }
+
 }
 
 
 void Entity::update(float delta_time, Entity* player, Entity* objects, int object_count, Map* map)
 {
     if (!m_is_active) return;
-    if (m_entity_type == PLAYER) {
+    if (m_entity_type == PLAYER || m_entity_type == ENEMY) {
         if (m_lives == 0){
             deactivate();
         }
@@ -200,13 +175,19 @@ void Entity::update(float delta_time, Entity* player, Entity* objects, int objec
     }
 
     m_velocity.x = m_movement.x * m_speed;
+    m_velocity.y = m_movement.y * m_speed;
+    
     m_velocity += m_acceleration * delta_time;
 
     // We make two calls to our check_collision methods, one for the collidable objects and one for
     // the map.
     m_position.y += m_velocity.y * delta_time;
     check_collision_y(objects, object_count);
-    check_collision_y(map);
+    
+    //fireball killing
+//    if (m_entity_type == WEAPON && check_collision_x(objects)){
+//        deactivate();
+//    }
 
     m_position.x += m_velocity.x * delta_time;
     check_collision_x(objects, object_count);
@@ -255,22 +236,24 @@ void const Entity::check_collision_y(Entity* collidable_entities, int collidable
                     m_velocity.y = 0;
                     collidable_entity->m_lives -= 1;
                     collidable_entity->set_invincible(true);
-//                    collidable_entity->set_position(glm::vec3(collidable_entity->m_position.x + 2, )
                 }
                 else if(m_entity_type == PLAYER && m_invincible == false){
                     m_position.y -= y_overlap;
                     m_velocity.y = 0;
-                //"player got hit top side"
                     m_lives -= 1; //kill itself
                     set_invincible(true);
                 }
-                else if(collidable_entity->get_entity_type() == ENEMY && m_entity_type == WEAPON){
+                else if(collidable_entity->get_entity_type() != PLAYER && m_entity_type == WEAPON){
                     collidable_entity->deactivate();
+                    deactivate();
+                }
+                else if(collidable_entity->get_entity_type() == PLAYER && m_entity_type == HEALTH){
+                    collidable_entity->m_lives += 1;
+                    deactivate();
                 }
 
             }
             else if (m_entity_type == ENEMY && m_velocity.y < 0 && collidable_entity->m_invincible == false) {
-                //std::cout << "ENEMY FALLING KILL PLAYER" << std::endl;
                 m_position.y += y_overlap;
                 m_velocity.y = 0;
                 m_collided_bottom = true;
@@ -278,15 +261,34 @@ void const Entity::check_collision_y(Entity* collidable_entities, int collidable
                 collidable_entity->set_invincible(true);
             }
             else if (m_entity_type == PLAYER && m_velocity.y < 0 && m_invincible == false) {
-                //std::cout << "PLAYER FALLING SHOULD KILL ENEMY" << std::endl;
                 m_position.y += y_overlap;
                 m_velocity.y = 0;
                 m_collided_bottom = true;
                 m_lives -= 1;
                 set_invincible(true);
             }
-            else if(collidable_entity->get_entity_type() == ENEMY && m_entity_type == WEAPON){
+            else if(collidable_entity->get_entity_type() != PLAYER && m_entity_type == WEAPON){
                 collidable_entity->deactivate();
+                deactivate();
+            }
+            else if(collidable_entity->get_entity_type() == PLAYER && m_entity_type == LOOT){
+                collidable_entity->transform();
+                deactivate();
+            }
+            else if(collidable_entity->get_entity_type() == PLAYER && m_entity_type == LOOT2){
+                collidable_entity->blastfire(); //fireball becomes true
+                deactivate();
+            }
+            else if(collidable_entity->get_entity_type() != PLAYER && m_entity_type == BULLET && !nullbullet){
+                std::cout << "i hit a zombie " << std::endl;
+                collidable_entity->m_lives -= 1;
+                m_movement.x  = 0.0f;
+                nullbullet = true;
+                renderable = false;
+            }
+            else if(collidable_entity->get_entity_type() == PLAYER && m_entity_type == HEALTH){
+                collidable_entity->m_lives += 1;
+                deactivate();
             }
         }
     }
@@ -317,9 +319,20 @@ void const Entity::check_collision_x(Entity* collidable_entities, int collidable
                     collidable_entity->m_lives -= 1;
                     collidable_entity->set_invincible(true);
                 }
-                else if(collidable_entity->get_entity_type() == ENEMY && m_entity_type == WEAPON){
+                else if(collidable_entity->get_entity_type() != PLAYER && m_entity_type == WEAPON){
                     collidable_entity->deactivate();
+                    deactivate();
                 }
+                else if(collidable_entity->get_entity_type() == PLAYER && m_entity_type == HEALTH){
+                    collidable_entity->m_lives += 1;
+                    deactivate();
+                }
+//                else if(collidable_entity->get_entity_type() != PLAYER && m_entity_type == BULLET ){
+//                    collidable_entity->m_lives -= 1;
+//                    m_movement.x  = 0.0f;
+//                    //nullbullet = true;
+//                    renderable = false;
+//                }
             }
             else if (m_velocity.x < 0) {
                 m_collided_left = true;
@@ -337,9 +350,21 @@ void const Entity::check_collision_x(Entity* collidable_entities, int collidable
                     collidable_entity->m_lives -= 1;
                     collidable_entity->set_invincible(true);
                 }
-                else if(collidable_entity->get_entity_type() == ENEMY && m_entity_type == WEAPON){
+                else if(collidable_entity->get_entity_type() != PLAYER && m_entity_type == WEAPON){
                     collidable_entity->deactivate();
+                    deactivate();
                 }
+                else if(collidable_entity->get_entity_type() == PLAYER && m_entity_type == HEALTH){
+                    collidable_entity->m_lives += 1;
+                    deactivate();
+                }
+//                else if(collidable_entity->get_entity_type() != PLAYER && m_entity_type == BULLET ){
+//                    collidable_entity->m_lives -= 1;
+//                    std::cout <<"h"
+//                    m_movement.x  = 0.0f;
+//                    //nullbullet = true;
+//                    renderable = false;
+//                }
             }
         }
     }
@@ -417,6 +442,9 @@ void const Entity::check_collision_x(Map* map)
         m_position.x += penetration_x;
         m_velocity.x = 0;
         m_collided_left = true;
+        if (m_entity_type == WEAPON){
+            deactivate();
+        }
     }
     if (map->is_solid(right, &penetration_x, &penetration_y) && m_velocity.x > 0)
     {
@@ -424,6 +452,9 @@ void const Entity::check_collision_x(Map* map)
         m_velocity.x = -m_velocity.x;
         
         m_collided_right = true;
+        if (m_entity_type == WEAPON){
+            deactivate();
+        }
     }
 }
 
@@ -431,7 +462,7 @@ void const Entity::check_collision_x(Map* map)
 
 void Entity::render(ShaderProgram* program)
 {
-    if (!m_is_active) return;
+     if (!m_is_active) return;
     program->set_model_matrix(m_model_matrix);
 
     if (m_animation_indices != NULL)
@@ -440,20 +471,39 @@ void Entity::render(ShaderProgram* program)
         return;
     }
 
-    float vertices[] = { -0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, -0.5, 0.5, 0.5, -0.5, 0.5 };
-    float tex_coords[] = { 0.0,  1.0, 1.0,  1.0, 1.0, 0.0,  0.0,  1.0, 1.0, 0.0,  0.0, 0.0 };
+    if (m_entity_type == BULLET) {
+        float bullet_vertices[] = { -0.1, -0.1, 0.1, -0.1, 0.1, 0.1, -0.1, -0.1, 0.1, 0.1, -0.1, 0.1 };
+        float bullet_tex_coords[] = { 0.0,  1.0, 1.0,  1.0, 1.0, 0.0,  0.0,  1.0, 1.0, 0.0,  0.0, 0.0 };
+        glBindTexture(GL_TEXTURE_2D, m_texture_id);
 
-    glBindTexture(GL_TEXTURE_2D, m_texture_id);
+        glVertexAttribPointer(program->get_position_attribute(), 2, GL_FLOAT, false, 0, bullet_vertices);
+        glEnableVertexAttribArray(program->get_position_attribute());
+        glVertexAttribPointer(program->get_tex_coordinate_attribute(), 2, GL_FLOAT, false, 0, bullet_tex_coords);
+        glEnableVertexAttribArray(program->get_tex_coordinate_attribute());
 
-    glVertexAttribPointer(program->get_position_attribute(), 2, GL_FLOAT, false, 0, vertices);
-    glEnableVertexAttribArray(program->get_position_attribute());
-    glVertexAttribPointer(program->get_tex_coordinate_attribute(), 2, GL_FLOAT, false, 0, tex_coords);
-    glEnableVertexAttribArray(program->get_tex_coordinate_attribute());
+        glDrawArrays(GL_TRIANGLES, 0, 6);
 
-    glDrawArrays(GL_TRIANGLES, 0, 6);
+        glDisableVertexAttribArray(program->get_position_attribute());
+        glDisableVertexAttribArray(program->get_tex_coordinate_attribute());
+    } else {
+        float vertices[] = { -0.5, -0.5, 0.5, -0.5, 0.5, 0.5, -0.5, -0.5, 0.5, 0.5, -0.5, 0.5 };
+        float tex_coords[] = { 0.0,  1.0, 1.0,  1.0, 1.0, 0.0,  0.0,  1.0, 1.0, 0.0,  0.0, 0.0 };
+        //glRotatef(180.0f, 0.0f, 1.0f, 0.0f);
 
-    glDisableVertexAttribArray(program->get_position_attribute());
-    glDisableVertexAttribArray(program->get_tex_coordinate_attribute());
+        glBindTexture(GL_TEXTURE_2D, m_texture_id);
+
+        glVertexAttribPointer(program->get_position_attribute(), 2, GL_FLOAT, false, 0, vertices);
+        glEnableVertexAttribArray(program->get_position_attribute());
+        glVertexAttribPointer(program->get_tex_coordinate_attribute(), 2, GL_FLOAT, false, 0, tex_coords);
+        glEnableVertexAttribArray(program->get_tex_coordinate_attribute());
+
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        glDisableVertexAttribArray(program->get_position_attribute());
+        glDisableVertexAttribArray(program->get_tex_coordinate_attribute());
+    }
+    
+    
 }
 
 
